@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dashing-boards"
+version = "0.1.0"
+description = "Reusable UI components for Plotly Dash apps"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Albin Pansell" }
+]
+keywords = ["dash", "plotly", "ui", "components", "tree-table"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Framework :: Dash"
+]
+dependencies = [
+  "dash>=2.14",
+  "dash-bootstrap-components>=1.6"
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "ruff>=0.11",
+  "pytest>=8.0",
+  "twine>=5.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/albinpansell/dashing_boards"
+Repository = "https://github.com/albinpansell/dashing_boards"
+Issues = "https://github.com/albinpansell/dashing_boards/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src",
+  "tests",
+  "examples",
+  "README.md",
+  "LICENSE",
+  "CONTRIBUTING.md"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dashing_boards"]
