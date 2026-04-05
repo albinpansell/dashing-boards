@@ -3,8 +3,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from dash import ALL, MATCH, Input, Output, State, callback, callback_context, dcc, html
 import dash_bootstrap_components as dbc
+from dash import ALL, MATCH, Input, Output, State, callback, callback_context, dcc, html
 from dash.exceptions import PreventUpdate
 
 from .aggregation import AggregationType, parse_aggregation

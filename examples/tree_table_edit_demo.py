@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dash import Dash, html
 import dash_bootstrap_components as dbc
+from dash import Dash, html
 
 from dashing_boards import TreeTableAIO
 
 
 def build_rows() -> list[dict[str, object]]:
-    return [ep_windows11_usb.sh
+    return [
         {"id": "project", "parent_id": None, "name": "Project", "owner": "Alex", "budget": 0},
         {"id": "design", "parent_id": "project", "name": "Design", "owner": "Mia", "budget": 120},
         {"id": "build", "parent_id": "project", "name": "Build", "owner": "Noah", "budget": 250},

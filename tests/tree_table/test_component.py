@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import dash_bootstrap_components as dbc
 import pytest
 from dash import html
-import dash_bootstrap_components as dbc
 
 from dashing_boards.tree_table import TreeTableAIO, TreeTableModel
 
