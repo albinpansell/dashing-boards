@@ -117,8 +117,29 @@ python3 -m twine upload --repository testpypi dist/*
 python3 -m twine upload dist/*
 ```
 
+## Component catalog
+
+| Category | Components |
+|---|---|
+| Basics | `TextBox`, `TextField`, `Button`, `Toggle`, `Dropdown`, `DatePicker`, `TagList` |
+| Tables | `Table`, `TreeTableAIO` |
+| Diagrams | `Diagram`, `BarChart`, `LineChart`, `ScatterChart`, `PieChart`, `Histogram`, `BoxChart`, `Heatmap`, `Sankey`, `Treemap` |
+| Graphs / Trees | `Graph`, `Tree` |
+| Kanban | `KanbanBoard` |
+| Layout | `Page`, `Grid`, `Tab`, `Tabs`, `Modal`, `Toast`, `Loading` |
+
+## Data sources
+
+- `StaticData` — hardcoded Python value.
+- `CallableDataSource` — value produced by an arbitrary callable.
+- `SqlDataSource` — SQLAlchemy 2.x; works with SQLite, DuckDB, Postgres, etc.
+- `FileDataSource` — CSV, TSV, JSON, JSONL, YAML, Parquet, Markdown, plain text. Optional live-watch (polls mtime). Opt-in atomic writes.
+- `HttpDataSource` — thin REST wrapper (httpx or urllib).
+
+All sources share the same Store-backed architecture: each exposes a `dcc.Store` with a pattern-matchable id, and every component bound to that source auto-updates via MATCH callbacks.
+
 ## Roadmap
 
-- Harden accessibility and keyboard interactions for `TreeTableAIO`.
-- Add additional reusable Dash components under `dashing_boards`.
-- Introduce React-based components only if Python-only composition becomes limiting.
+- Replace Kanban MVP (Python-only) with a `dnd-kit`-backed React component for native drag-and-drop.
+- Parent-child data dependencies for `Grid` (awaiting concrete use cases).
+- Harden accessibility and keyboard interactions across all components.
