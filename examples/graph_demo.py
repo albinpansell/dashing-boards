@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dash import Dash
 
-from dashing_boards import DataType, Graph, Grid, Page, StaticData, Tree
+from dashing_boards import DataType, Graph, Grid, Page, StaticData, Tree, make_app
 
 graph_payload = {
     "nodes": [
@@ -31,7 +30,7 @@ tree_rows = [
 ]
 tree_src = StaticData(tree_rows, DataType.TREE_ROWS, source_id="t")
 
-app = Dash(__name__)
+app = make_app(__name__)
 app.layout = Page(
     [
         Grid(

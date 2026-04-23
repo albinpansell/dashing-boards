@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import dash_bootstrap_components as dbc
-from dash import MATCH, Input, Output, callback
+from dash import ALL, MATCH, Input, Output, callback
 
 from ...binding.component import DataBoundComponent
 from ...binding.types import DataType
@@ -36,11 +36,12 @@ class Toggle(DataBoundComponent):
 
     @callback(
         Output({"component": "DataSource", "source_id": MATCH}, "data", allow_duplicate=True),
-        Input({"component": "Toggle", "sub": "switch", "source_id": MATCH, "aio_id": MATCH}, "value"),
+        Input({"component": "Toggle", "sub": "switch", "source_id": MATCH, "aio_id": ALL}, "value"),
         prevent_initial_call=True,
     )
-    def _write(value: bool) -> bool:
-        from .._writable import mirror_to_backing
+    def _write(_values: list[bool]) -> bool:
+        from .._writable import mirror_to_backing, triggered_value
 
+        value = triggered_value()
         mirror_to_backing(value)
         return bool(value)

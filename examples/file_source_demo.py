@@ -7,18 +7,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dash import Dash
 
-from dashing_boards import FileDataSource, Page, Table
+from dashing_boards import FileDataSource, Page, Table, make_app
 
 
 csv_path = Path(__file__).parent / "_tasks.csv"
 if not csv_path.exists():
     csv_path.write_text("id,title,status\n1,Write docs,todo\n2,Ship PR,doing\n3,Take break,done\n")
 
-source = FileDataSource(csv_path, writable=True, watch=True, source_id="tasks")
+source = FileDataSource(csv_path, writable=True, watch=False, source_id="tasks")
 
-app = Dash(__name__)
+app = make_app(__name__)
 app.layout = Page(
     [Table(source, editable=True), source.store()],
     title="File source demo",

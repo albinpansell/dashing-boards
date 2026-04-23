@@ -1,3 +1,4 @@
+from .app import make_app
 from .binding import (
     CallableDataSource,
     DataBoundComponent,
@@ -65,6 +66,7 @@ __all__ = [
     "KanbanBoard",
     "LineChart",
     "Loading",
+    "make_app",
     "Modal",
     "Page",
     "PieChart",

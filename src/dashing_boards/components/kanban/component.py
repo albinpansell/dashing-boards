@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import dash_bootstrap_components as dbc
-from dash import ALL, MATCH, Input, Output, State, callback, callback_context, html
+from dash import ALL, MATCH, Input, Output, State, callback, callback_context, clientside_callback, dcc, html
 from dash.exceptions import PreventUpdate
 
 from ...binding.component import DataBoundComponent
@@ -11,16 +12,18 @@ from ...binding.types import DataType
 
 
 class KanbanBoard(DataBoundComponent):
-    """Python-only Kanban MVP.
+    """Kanban board with real drag-and-drop across columns.
 
-    Each card has ◀/▶ buttons to move between columns — no native
-    drag-and-drop yet (would require a React component wrapping
-    dnd-kit; planned follow-up).
+    Drag-and-drop is implemented with SortableJS (loaded via
+    `make_app`). Each column is a Sortable list; dragging a card
+    between columns fires `onEnd`, which serialises the new
+    column-to-cardIds mapping into a hidden dcc.Store, which a
+    Python callback consumes to update the DataSource.
 
     Source: DATAFRAME of rows, each with at minimum:
-      - `id`   (unique identifier)
+      - `id`     (unique identifier)
       - `status` (or the column configured via `column_key`)
-      - `title` (or the column configured via `title_key`)
+      - `title`  (or the column configured via `title_key`)
 
     Column set is either `columns=["todo", "doing", "done"]` or
     auto-detected from the data when `columns=None`.
@@ -53,19 +56,10 @@ class KanbanBoard(DataBoundComponent):
         return {"component": "KanbanBoard", "sub": "config", "source_id": source_id, "aio_id": aio_id}
 
     @staticmethod
-    def _move_id(source_id: str, aio_id: str, card_id: str, direction: str) -> dict[str, str]:
-        return {
-            "component": "KanbanBoard",
-            "sub": "move",
-            "source_id": source_id,
-            "aio_id": aio_id,
-            "card_id": card_id,
-            "direction": direction,
-        }
+    def _snapshot_id(source_id: str, aio_id: str) -> dict[str, str]:
+        return {"component": "KanbanBoard", "sub": "snapshot", "source_id": source_id, "aio_id": aio_id}
 
     def _build(self) -> list[Any]:
-        from dash import dcc
-
         rows = self.source.initial() or []
         columns = self._resolve_columns(rows)
         config = {
@@ -74,20 +68,22 @@ class KanbanBoard(DataBoundComponent):
             "title_key": self._title_key,
             "id_key": self._id_key,
         }
+        snapshot_id = self._snapshot_id(self.source.source_id, self.aio_id)
         return [
             dcc.Store(id=self._config_id(self.source.source_id, self.aio_id), data=config),
+            dcc.Store(id=snapshot_id),
             html.Div(
                 id=self._root_id(self.source.source_id, self.aio_id),
+                className="dbd-kanban-board",
+                **{"data-store-id": json.dumps(snapshot_id), "data-group": f"kanban-{self.source.source_id}-{self.aio_id}"},
                 children=_render_board(
-                    rows,
-                    columns,
-                    self._column_key,
-                    self._title_key,
-                    self._id_key,
-                    self.source.source_id,
-                    self.aio_id,
+                    rows, columns, self._column_key, self._title_key, self._id_key
                 ),
-                style={"display": "grid", "gridTemplateColumns": f"repeat({len(columns) or 1}, 1fr)", "gap": "12px"},
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": f"repeat({len(columns) or 1}, 1fr)",
+                    "gap": "12px",
+                },
             ),
         ]
 
@@ -105,9 +101,8 @@ class KanbanBoard(DataBoundComponent):
         Output({"component": "KanbanBoard", "sub": "root", "source_id": MATCH, "aio_id": MATCH}, "children"),
         Input({"component": "DataSource", "source_id": MATCH}, "data"),
         State({"component": "KanbanBoard", "sub": "config", "source_id": MATCH, "aio_id": MATCH}, "data"),
-        State({"component": "KanbanBoard", "sub": "root", "source_id": MATCH, "aio_id": MATCH}, "id"),
     )
-    def _render(data: Any, config: dict[str, Any], root_id: dict[str, str]) -> list[Any]:
+    def _render(data: Any, config: dict[str, Any]) -> list[Any]:
         config = config or {}
         columns = config.get("columns") or []
         return _render_board(
@@ -116,60 +111,157 @@ class KanbanBoard(DataBoundComponent):
             config.get("column_key", "status"),
             config.get("title_key", "title"),
             config.get("id_key", "id"),
-            root_id["source_id"],
-            root_id["aio_id"],
         )
 
     @callback(
         Output({"component": "DataSource", "source_id": MATCH}, "data", allow_duplicate=True),
-        Input(
-            {
-                "component": "KanbanBoard",
-                "sub": "move",
-                "source_id": MATCH,
-                "aio_id": MATCH,
-                "card_id": ALL,
-                "direction": ALL,
-            },
-            "n_clicks",
-        ),
+        Input({"component": "KanbanBoard", "sub": "snapshot", "source_id": MATCH, "aio_id": ALL}, "data"),
         State({"component": "DataSource", "source_id": MATCH}, "data"),
-        State({"component": "KanbanBoard", "sub": "config", "source_id": MATCH, "aio_id": MATCH}, "data"),
+        State({"component": "KanbanBoard", "sub": "config", "source_id": MATCH, "aio_id": ALL}, "data"),
         prevent_initial_call=True,
     )
-    def _move(_clicks: list[int | None], rows: list[dict[str, Any]], config: dict[str, Any]) -> list[dict[str, Any]]:
+    def _apply_drag(
+        snapshots: list[dict[str, Any] | None],
+        rows: list[dict[str, Any]],
+        configs: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         trigger = callback_context.triggered_id
         if not isinstance(trigger, dict):
             raise PreventUpdate
-        clicks = callback_context.triggered[0]["value"] if callback_context.triggered else None
-        if not clicks:
+        aio_id = trigger.get("aio_id")
+        inputs_list = callback_context.inputs_list[0]
+        idx = next((i for i, inp in enumerate(inputs_list) if inp.get("id", {}).get("aio_id") == aio_id), None)
+        if idx is None:
             raise PreventUpdate
+        snapshot = snapshots[idx]
+        if not snapshot or "snapshot" not in snapshot:
+            raise PreventUpdate
+        config_states = callback_context.states_list[1]
+        config = next(
+            (s.get("value") for s in config_states if s.get("id", {}).get("aio_id") == aio_id),
+            None,
+        )
         config = config or {}
-        columns = config.get("columns") or []
         col_key = config.get("column_key", "status")
         id_key = config.get("id_key", "id")
-        card_id = trigger.get("card_id")
-        direction = trigger.get("direction")
-        if not columns or card_id is None:
+        rows = rows or []
+        by_id = {str(r.get(id_key)): r for r in rows}
+        new_rows: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for col, ids in (snapshot.get("snapshot") or {}).items():
+            for cid in ids:
+                cid_s = str(cid)
+                original = by_id.get(cid_s)
+                if original is None:
+                    continue
+                updated = dict(original)
+                updated[col_key] = col
+                new_rows.append(updated)
+                seen.add(cid_s)
+        for r in rows:
+            if str(r.get(id_key)) not in seen:
+                new_rows.append(r)
+        if new_rows == rows:
             raise PreventUpdate
-
-        updated = [dict(r) for r in (rows or [])]
-        for r in updated:
-            if str(r.get(id_key)) != str(card_id):
-                continue
-            current = str(r.get(col_key, columns[0]))
-            try:
-                idx = columns.index(current)
-            except ValueError:
-                idx = 0
-            new_idx = max(0, min(len(columns) - 1, idx + (1 if direction == "right" else -1)))
-            r[col_key] = columns[new_idx]
-            break
 
         from .._writable import mirror_to_backing
 
-        mirror_to_backing(updated)
-        return updated
+        mirror_to_backing(new_rows)
+        return new_rows
+
+
+clientside_callback(
+    """
+    function(_children, _id) {
+        if (window.__dbKanbanInstalled) return window.dash_clientside.no_update;
+        window.__dbKanbanInstalled = true;
+
+        if (!document.getElementById('dbd-kanban-style')) {
+            const s = document.createElement('style');
+            s.id = 'dbd-kanban-style';
+            s.textContent = (
+                '.dbd-kanban-ghost { opacity: 0.35; background: #dbeafe !important; }' +
+                '.dbd-kanban-chosen { opacity: 0 !important; }' +
+                '.dbd-kanban-fallback { opacity: 0.9 !important; transform: rotate(1deg); ' +
+                'box-shadow: 0 6px 16px rgba(0,0,0,0.2); pointer-events: none; }'
+            );
+            document.head.appendChild(s);
+        }
+
+        function collectSnapshot(board) {
+            const snapshot = {};
+            board.querySelectorAll('.dbd-kanban-column').forEach(function(c) {
+                snapshot[c.dataset.column] = Array.from(
+                    c.querySelectorAll('.dbd-kanban-card')
+                ).map(function(x) { return x.dataset.cardId; });
+            });
+            return snapshot;
+        }
+
+        function initCol(col) {
+            if (col._dbdSortable || !window.Sortable) return;
+            const board = col.closest('.dbd-kanban-board');
+            if (!board) return;
+            const group = board.dataset.group || 'kanban';
+            const storeIdRaw = board.dataset.storeId;
+            if (!storeIdRaw) return;
+            let storeId;
+            try { storeId = JSON.parse(storeIdRaw); } catch (_) { return; }
+            col._dbdSortable = new Sortable(col, {
+                group: group,
+                animation: 150,
+                forceFallback: true,
+                ghostClass: 'dbd-kanban-ghost',
+                chosenClass: 'dbd-kanban-chosen',
+                fallbackClass: 'dbd-kanban-fallback',
+                onEnd: function(evt) {
+                    if (!window.dash_clientside || !window.dash_clientside.set_props) return;
+                    const snapshot = collectSnapshot(board);
+                    // Undo Sortable's DOM mutation so React's reconciler
+                    // can replace the children cleanly when Dash re-renders.
+                    const item = evt.item;
+                    const from = evt.from;
+                    const oldIndex = evt.oldIndex;
+                    if (item && from) {
+                        if (item.parentNode) item.parentNode.removeChild(item);
+                        const siblings = from.children;
+                        if (oldIndex == null || oldIndex >= siblings.length) {
+                            from.appendChild(item);
+                        } else {
+                            from.insertBefore(item, siblings[oldIndex]);
+                        }
+                    }
+                    window.dash_clientside.set_props(storeId, {
+                        data: {snapshot: snapshot, ts: Date.now()}
+                    });
+                }
+            });
+        }
+
+        function initAll() {
+            if (!window.Sortable) return;
+            document.querySelectorAll('.dbd-kanban-column').forEach(initCol);
+        }
+
+        initAll();
+        const tryAgain = setInterval(function() {
+            if (window.Sortable) {
+                clearInterval(tryAgain);
+                initAll();
+            }
+        }, 100);
+
+        new MutationObserver(function() {
+            initAll();
+        }).observe(document.body, {childList: true, subtree: true});
+
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output({"component": "KanbanBoard", "sub": "root", "source_id": MATCH, "aio_id": MATCH}, "style"),
+    Input({"component": "KanbanBoard", "sub": "root", "source_id": MATCH, "aio_id": MATCH}, "children"),
+    State({"component": "KanbanBoard", "sub": "root", "source_id": MATCH, "aio_id": MATCH}, "id"),
+)
 
 
 def _render_board(
@@ -178,53 +270,49 @@ def _render_board(
     column_key: str,
     title_key: str,
     id_key: str,
-    source_id: str,
-    aio_id: str,
 ) -> list[Any]:
     result: list[Any] = []
     for col in columns:
         col_rows = [r for r in rows if str(r.get(column_key, "")) == col]
-        cards: list[Any] = []
-        for r in col_rows:
-            card_id = str(r.get(id_key))
-            cards.append(_render_card(r, card_id, title_key, source_id, aio_id))
+        cards: list[Any] = [_render_card(r, str(r.get(id_key)), title_key) for r in col_rows]
         result.append(
             html.Div(
                 [
-                    html.Div(col, style={"fontWeight": 600, "marginBottom": "8px"}),
-                    html.Div(cards, style={"display": "flex", "flexDirection": "column", "gap": "6px"}),
+                    html.Div(col, className="dbd-kanban-col-title", style={"fontWeight": 600, "marginBottom": "8px"}),
+                    html.Div(
+                        cards,
+                        className="dbd-kanban-column",
+                        **{"data-column": col},
+                        style={
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "gap": "6px",
+                            "flex": "1 1 auto",
+                            "minHeight": "240px",
+                        },
+                    ),
                 ],
-                style={"background": "#f5f5f5", "padding": "10px", "borderRadius": "6px", "minHeight": "80px"},
+                style={
+                    "background": "#f5f5f5",
+                    "padding": "10px",
+                    "borderRadius": "6px",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "minHeight": "280px",
+                },
             )
         )
     return result
 
 
-def _render_card(row: dict[str, Any], card_id: str, title_key: str, source_id: str, aio_id: str) -> Any:
+def _render_card(row: dict[str, Any], card_id: str, title_key: str) -> Any:
     title = str(row.get(title_key, card_id))
-    return dbc.Card(
-        dbc.CardBody(
-            [
-                html.Div(title, style={"marginBottom": "6px"}),
-                html.Div(
-                    [
-                        dbc.Button(
-                            "◀",
-                            id=KanbanBoard._move_id(source_id, aio_id, card_id, "left"),
-                            size="sm",
-                            color="light",
-                            style={"marginRight": "4px"},
-                        ),
-                        dbc.Button(
-                            "▶",
-                            id=KanbanBoard._move_id(source_id, aio_id, card_id, "right"),
-                            size="sm",
-                            color="light",
-                        ),
-                    ],
-                    style={"display": "flex", "justifyContent": "flex-end"},
-                ),
-            ]
+    return html.Div(
+        dbc.Card(
+            dbc.CardBody(html.Div(title), style={"padding": "8px 10px"}),
+            style={"padding": "0"},
         ),
-        style={"padding": "0"},
+        className="dbd-kanban-card",
+        **{"data-card-id": card_id},
+        style={"cursor": "grab"},
     )

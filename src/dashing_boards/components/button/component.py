@@ -4,7 +4,7 @@ import uuid
 from typing import Any
 
 import dash_bootstrap_components as dbc
-from dash import MATCH, Input, Output, callback, html
+from dash import ALL, MATCH, Input, Output, callback, html
 
 
 class Button(html.Div):
@@ -48,8 +48,10 @@ class Button(html.Div):
 
     @callback(
         Output({"component": "DataSource", "source_id": MATCH}, "data", allow_duplicate=True),
-        Input({"component": "Button", "sub": "btn", "source_id": MATCH, "aio_id": MATCH}, "n_clicks"),
+        Input({"component": "Button", "sub": "btn", "source_id": MATCH, "aio_id": ALL}, "n_clicks"),
         prevent_initial_call=True,
     )
-    def _write_clicks(n: int | None) -> int:
-        return int(n or 0)
+    def _write_clicks(_clicks: list[int | None]) -> int:
+        from .._writable import triggered_value
+
+        return int(triggered_value() or 0)

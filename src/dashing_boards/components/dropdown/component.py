@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import MATCH, Input, Output, callback, dcc
+from dash import ALL, MATCH, Input, Output, callback, dcc
 
 from ...binding.component import DataBoundComponent
 from ...binding.types import DataType
@@ -67,11 +67,12 @@ class Dropdown(DataBoundComponent):
 
     @callback(
         Output({"component": "DataSource", "source_id": MATCH}, "data", allow_duplicate=True),
-        Input({"component": "Dropdown", "sub": "dd", "source_id": MATCH, "aio_id": MATCH}, "value"),
+        Input({"component": "Dropdown", "sub": "dd", "source_id": MATCH, "aio_id": ALL}, "value"),
         prevent_initial_call=True,
     )
-    def _write(value: Any) -> Any:
-        from .._writable import mirror_to_backing
+    def _write(_values: list[Any]) -> Any:
+        from .._writable import mirror_to_backing, triggered_value
 
+        value = triggered_value()
         mirror_to_backing(value)
         return value

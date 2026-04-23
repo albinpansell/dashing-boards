@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import MATCH, Input, Output, callback, dcc
+from dash import ALL, MATCH, Input, Output, callback, dcc
 
 from ...binding.component import DataBoundComponent
 from ...binding.types import DataType
@@ -31,11 +31,12 @@ class DatePicker(DataBoundComponent):
 
     @callback(
         Output({"component": "DataSource", "source_id": MATCH}, "data", allow_duplicate=True),
-        Input({"component": "DatePicker", "sub": "dp", "source_id": MATCH, "aio_id": MATCH}, "date"),
+        Input({"component": "DatePicker", "sub": "dp", "source_id": MATCH, "aio_id": ALL}, "date"),
         prevent_initial_call=True,
     )
-    def _write(date: Any) -> Any:
-        from .._writable import mirror_to_backing
+    def _write(_dates: list[Any]) -> Any:
+        from .._writable import mirror_to_backing, triggered_value
 
+        date = triggered_value()
         mirror_to_backing(date)
         return date

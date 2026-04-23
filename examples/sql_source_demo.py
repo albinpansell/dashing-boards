@@ -5,10 +5,9 @@ Shows a Table and a BarChart both bound to the same source.
 
 from __future__ import annotations
 
-from dash import Dash
 from sqlalchemy import create_engine, text
 
-from dashing_boards import BarChart, DataType, Page, SqlDataSource, Table
+from dashing_boards import BarChart, DataType, Page, SqlDataSource, Table, make_app
 
 
 def make_source() -> SqlDataSource:
@@ -27,7 +26,7 @@ def make_source() -> SqlDataSource:
 
 
 source = make_source()
-app = Dash(__name__)
+app = make_app(__name__)
 app.layout = Page(
     [
         Table(source),
