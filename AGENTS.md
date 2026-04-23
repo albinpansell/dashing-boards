@@ -132,6 +132,21 @@ When a demo is already running, port 8050 is taken; pick another:
 app.run(debug=True, port=8051)
 ```
 
+## Pre-PR checklist (mandatory)
+
+Always run these before `git push` or opening a PR. CI runs the same
+checks, so skipping them locally just means a failed build later.
+
+```bash
+python3 -m ruff format .         # apply formatting (not --check)
+python3 -m pytest                 # all tests must pass
+```
+
+`ruff format .` (without `--check`) **writes** the formatting fixes. Run
+it, stage the resulting changes, and include them in the same commit as
+your feature work — do not push code that `ruff format --check` would
+flag.
+
 ## Gotchas
 
 - **Pattern-matched writebacks**: See "Writing a writable component" above.

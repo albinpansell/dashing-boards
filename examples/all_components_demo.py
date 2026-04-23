@@ -156,6 +156,7 @@ tree_table_rows = [
 
 # ---------- Layout helpers ----------
 
+
 def _section(title: str, *content: object) -> html.Div:
     return html.Div([html.H4(title, className="mt-4 mb-2"), html.Hr(className="mb-3"), *content])
 
@@ -177,18 +178,22 @@ app.layout = Page(
                     [_labelled("TextBox (read-only view of title)", TextBox(title_src))],
                     [_labelled("TextField (editable, writes back to title)", TextField(title_src))],
                     [_labelled("TagList", TagList(tags_src))],
-                    [_labelled(
-                        "Dropdown",
-                        Dropdown(region_src, options=["north", "south", "east", "west"]),
-                    )],
+                    [
+                        _labelled(
+                            "Dropdown",
+                            Dropdown(region_src, options=["north", "south", "east", "west"]),
+                        )
+                    ],
                     [_labelled("Toggle", Toggle(toggle_src, label="Enabled"))],
                     [_labelled("DatePicker", DatePicker(date_src))],
-                    [_labelled(
-                        "Button (click count mirrors into a NUMBER source)",
-                        Button("Click me", source=click_src),
-                        html.Span(" Clicks: ", className="ms-2"),
-                        TextBox(click_src),
-                    )],
+                    [
+                        _labelled(
+                            "Button (click count mirrors into a NUMBER source)",
+                            Button("Click me", source=click_src),
+                            html.Span(" Clicks: ", className="ms-2"),
+                            TextBox(click_src),
+                        )
+                    ],
                 ],
                 columns=2,
             ),
@@ -276,7 +281,14 @@ app.layout = Page(
                 duration_ms=3000,
                 toast_id="demo-toast",
             ),
-            Loading([html.Div("Loading container (wraps children and shows spinner while callbacks run)", className="text-muted mt-2")]),
+            Loading(
+                [
+                    html.Div(
+                        "Loading container (wraps children and shows spinner while callbacks run)",
+                        className="text-muted mt-2",
+                    )
+                ]
+            ),
         ),
         title_src.store(),
         tags_src.store(),
