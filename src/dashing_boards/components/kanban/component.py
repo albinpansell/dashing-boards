@@ -75,10 +75,11 @@ class KanbanBoard(DataBoundComponent):
             html.Div(
                 id=self._root_id(self.source.source_id, self.aio_id),
                 className="dbd-kanban-board",
-                **{"data-store-id": json.dumps(snapshot_id), "data-group": f"kanban-{self.source.source_id}-{self.aio_id}"},
-                children=_render_board(
-                    rows, columns, self._column_key, self._title_key, self._id_key
-                ),
+                **{
+                    "data-store-id": json.dumps(snapshot_id),
+                    "data-group": f"kanban-{self.source.source_id}-{self.aio_id}",
+                },
+                children=_render_board(rows, columns, self._column_key, self._title_key, self._id_key),
                 style={
                     "display": "grid",
                     "gridTemplateColumns": f"repeat({len(columns) or 1}, 1fr)",
