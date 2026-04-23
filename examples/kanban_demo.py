@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dash import Dash
 
-from dashing_boards import DataType, KanbanBoard, Page, StaticData
+from dashing_boards import DataType, KanbanBoard, Page, StaticData, make_app
 
 rows = [
     {"id": "1", "title": "Write requirements", "status": "done"},
@@ -14,7 +13,7 @@ rows = [
 ]
 source = StaticData(rows, DataType.DATAFRAME, source_id="board")
 
-app = Dash(__name__)
+app = make_app(__name__)
 app.layout = Page(
     [KanbanBoard(source, columns=["todo", "doing", "done"]), source.store()],
     title="Kanban demo (MVP)",

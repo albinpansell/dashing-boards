@@ -9,5 +9,5 @@ def test_render_board_produces_one_column_per_config() -> None:
         {"id": "2", "title": "B", "status": "doing"},
         {"id": "3", "title": "C", "status": "todo"},
     ]
-    columns = _render_board(rows, ["todo", "doing", "done"], "status", "title", "id", "sid", "aio")
+    columns = _render_board(rows, ["todo", "doing", "done"], "status", "title", "id")
     assert len(columns) == 3

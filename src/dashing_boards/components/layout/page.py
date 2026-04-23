@@ -21,5 +21,5 @@ class Page(html.Div):
             head.append(html.H3(title, className="mb-1"))
         if subtitle:
             head.append(html.Div(subtitle, className="text-muted mb-3"))
-        body = dbc.Container(list(children), fluid=True, className="p-3")
-        super().__init__(children=head + [body], **(container_props or {}))
+        body = dbc.Container(head + list(children), fluid=True, className="p-3")
+        super().__init__(children=[body], **(container_props or {}))

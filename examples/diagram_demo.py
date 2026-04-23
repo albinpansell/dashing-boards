@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 
 from dashing_boards import (
     BarChart,
@@ -14,6 +13,7 @@ from dashing_boards import (
     PieChart,
     ScatterChart,
     StaticData,
+    make_app,
 )
 
 rows = [
@@ -26,7 +26,7 @@ rows = [
 ]
 source = StaticData(rows, DataType.DATAFRAME, source_id="sales")
 
-app = Dash(__name__)
+app = make_app(__name__)
 app.layout = Page(
     [
         Grid(

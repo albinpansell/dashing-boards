@@ -22,7 +22,7 @@ def main() -> int:
             html.H3("TreeTableAIO Demo"),
             TreeTableAIO(
                 rows=build_rows(),
-                editable=True,
+                editable=False,
                 aggregations={"budget": "sum", "status": "equal"},
                 column_labels={"budget": "Budget", "status": "Status"},
                 aio_id="demo-tree",
