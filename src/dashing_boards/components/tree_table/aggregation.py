@@ -27,18 +27,23 @@ def apply_aggregation(aggregation: AggregationType, values: Iterable[object]) ->
         valid = [value for value in values if value is not None and not _is_nan(value)]
         return valid[0] if valid else None
 
-    numeric_values = [float(value) for value in values if _is_number(value)]
-    if not numeric_values:
+    raw_values = [value for value in values if _is_number(value)]
+    if not raw_values:
         return None
+    numeric_values = [float(value) for value in raw_values]
+    all_ints = all(isinstance(value, int) and not isinstance(value, bool) for value in raw_values)
 
     if aggregation == AggregationType.SUM:
-        return sum(numeric_values)
+        total = sum(numeric_values)
+        return int(total) if all_ints else total
     if aggregation == AggregationType.AVERAGE:
         return sum(numeric_values) / len(numeric_values)
     if aggregation == AggregationType.MIN:
-        return min(numeric_values)
+        result = min(numeric_values)
+        return int(result) if all_ints else result
     if aggregation == AggregationType.MAX:
-        return max(numeric_values)
+        result = max(numeric_values)
+        return int(result) if all_ints else result
 
     return None
 

@@ -4,7 +4,7 @@ import dash_bootstrap_components as dbc
 import pytest
 from dash import html
 
-from dashing_boards.tree_table import TreeTableAIO, TreeTableModel
+from dashing_boards.components.tree_table import TreeTableAIO, TreeTableModel
 
 
 def rows() -> list[dict[str, object]]:

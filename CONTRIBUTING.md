@@ -15,8 +15,13 @@ python3 -m pip install -e .[dev]
 
 ## Local checks
 
+Always run these before `git push` or opening a PR. The first command
+**applies** formatting; `--check .` only reports what would change and is
+for CI. Commit the formatting changes together with your feature work.
+
 ```bash
-python3 -m ruff format --check .
+python3 -m ruff format .        # write formatting fixes
+python3 -m ruff format --check . # verify no outstanding diffs
 python3 -m pytest
 python3 -m build
 ```

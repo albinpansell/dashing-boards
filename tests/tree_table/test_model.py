@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from dashing_boards.tree_table import AggregationType, TreeTableModel
+from dashing_boards.components.tree_table import AggregationType, TreeTableModel
 
 
 def sample_rows() -> list[dict[str, object]]:
@@ -59,3 +59,37 @@ def test_equal_aggregation_propagates_down_on_update() -> None:
     )
     model.update_field("r", "status", "done")
     assert model.get_item("c")["status"] == "done"
+
+
+def test_missing_parent_id_raises() -> None:
+    with pytest.raises(ValueError, match="Parent id not found"):
+        TreeTableModel(rows=[{"id": "c", "parent_id": "missing", "name": "Child"}])
+
+
+def test_cycle_detection_raises() -> None:
+    with pytest.raises(ValueError, match="Cycle detected in tree"):
+        TreeTableModel(
+            rows=[
+                {"id": "a", "parent_id": "b", "name": "A"},
+                {"id": "b", "parent_id": "a", "name": "B"},
+            ]
+        )
+
+
+def test_update_id_field_raises() -> None:
+    model = TreeTableModel(rows=sample_rows())
+    with pytest.raises(ValueError, match="Cannot update id field"):
+        model.update_field("c1", "id", "new-id")
+
+
+def test_sum_aggregation_ignores_bool_and_nan() -> None:
+    model = TreeTableModel(
+        rows=[
+            {"id": "r", "parent_id": None, "name": "Root", "cost": 0},
+            {"id": "c1", "parent_id": "r", "name": "Child 1", "cost": True},
+            {"id": "c2", "parent_id": "r", "name": "Child 2", "cost": float("nan")},
+            {"id": "c3", "parent_id": "r", "name": "Child 3", "cost": 4},
+        ],
+        aggregation_map={"cost": AggregationType.SUM},
+    )
+    assert model.get_item("r")["cost"] == 4.0
